@@ -29,7 +29,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Main script functions:
-def ftan_plot(data, samp_rate, centre_freq_range=[], centre_freq_range_step=1.0, band_width_gau_filter=[1.25], axes=None, log=False, cmap='viridis', return_ftan_data=False):
+def ftan_plot(data, samp_rate, centre_freq_range=[], centre_freq_range_step=1.0, band_width_gau_filter=[1.25], plot_type="freq-time", event_stat_dist=0.0, vel_freq_plot_lims=[0.25,5.0], axes=None, log=False, cmap='viridis', return_ftan_data=False):
     """
     Computes the frequency-time-analysis space of input data.
     Based on method in "Seismic surface waves in a laterally inhomogeneous 
@@ -41,6 +41,9 @@ def ftan_plot(data, samp_rate, centre_freq_range=[], centre_freq_range_step=1.0,
     centre_freq_range - Lower and upper bounds of frequency range ([float, float])
     centre_freq_range_step - Size of freq. step (float)
     band_width_gau_filter - Width of Gaussian band-pass filter ([float] or 1D array of floats for all centre freq values)
+    plot_type - The type of plot to plot (e.g. centre frequency vs. time or velocity vs. centre frequency) (specific string, e.g. "freq-time" or "vel-freq")
+    event_stat_dist - Event-station distance (used for calculating velocity for vel-freq figure, if specified by plot_type) (float)
+    vel_freq_plot_lims - Y-axis limits for vel-freq style plot ([float, float])
     axes - Axes to plot to (matplotlib axis)
     log - Plots with log scale on y axis if true (bool)
     cmap - Color map to use
@@ -95,18 +98,37 @@ def ftan_plot(data, samp_rate, centre_freq_range=[], centre_freq_range_step=1.0,
         S_t_domain_array[:, i] = np.fft.ifft(S_f_domain)*(len(W_t_domain)**0.5) # Normalised by root(n)
             
     # Plot results:
-    if not axes:
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-    else:
-        ax = axes
-    if log:
-        ax.set_yscale('log')
-    y_grid, x_grid = np.meshgrid(centre_freqs_array,time_array)
-    col_mesh = ax.pcolormesh(x_grid, y_grid, np.absolute(S_t_domain_array), cmap=cmap)
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Centre frequency (Hz)")
-    plt.show()
+    if plot_type=='freq-time':
+        if not axes:
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+        else:
+            ax = axes
+        if log:
+            ax.set_yscale('log')
+        y_grid, x_grid = np.meshgrid(centre_freqs_array,time_array)
+        col_mesh = ax.pcolormesh(x_grid, y_grid, np.absolute(S_t_domain_array), cmap=cmap)
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel("Centre frequency (Hz)")
+        if not axes:
+            plt.show()
+    elif plot_type=='vel-freq':
+        if not axes:
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+        else:
+            ax = axes
+        if log:
+            ax.set_yscale('log')
+        time_array[time_array==0] = 1e-12
+        vel_array = event_stat_dist/time_array
+        y_grid, x_grid = np.meshgrid(vel_array, centre_freqs_array)
+        col_mesh = ax.pcolormesh(x_grid, y_grid, np.transpose(np.absolute(S_t_domain_array)), cmap=cmap)
+        ax.set_xlabel("Centre frequency (Hz)")
+        ax.set_ylabel("Velocity ($m$ $s^{-1}$)")
+        ax.set_ylim(vel_freq_plot_lims)
+        if not axes:
+            plt.show()
     
     # Return outputs:
     if return_ftan_data:
